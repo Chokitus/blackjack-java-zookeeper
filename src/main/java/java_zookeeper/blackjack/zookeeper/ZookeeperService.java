@@ -2,6 +2,7 @@ package java_zookeeper.blackjack.zookeeper;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
 import org.apache.zookeeper.CreateMode;
@@ -46,6 +47,11 @@ public class ZookeeperService implements Watcher, Closeable {
 	public static ZookeeperService getInstance() {
 		return ZookeeperService.getInstance(null);
 	}
+	public static String getCorrectNodeName(final Player player) {
+		return "".equals(player.getFullName())
+				? new StringBuilder("/").append(player.getMesa()).append("/").append(player.getName()).toString()
+				: player.getFullName();
+	}
 
 	@Override
 	public void close() {
@@ -75,13 +81,13 @@ public class ZookeeperService implements Watcher, Closeable {
 
 	/**
 	 * <p>
-	 * Cria um novo Player na mesa, passando o nome da mesa, o player e a sua
-	 * chave. A ideia é que um Player espere o Dealer criar a mesa, e se
-	 * registre nesta mesa. Ao criar o nó, o Player deixará a sua chave no nó. O
-	 * Dealer deverá ter um Watch na mesa, pois assim que um novo Player criar
-	 * um nó, o Dealer deverá olhar para a chave da mesma, memorizá-la (num
-	 * HashMap), e sobrescrever a chave. Assim, fica acordado uma chave
-	 * (presumidamente única) para cada jogador.
+	 * Cria um novo Player na mesa, passando o nome da mesa e o do Player. A
+	 * ideia é que um Player espere o Dealer criar a mesa, e se registre nesta
+	 * mesa. Ao criar o nó, o Player deixará a sua chave no nó. O Dealer deverá
+	 * ter um Watch na mesa, pois assim que um novo Player criar um nó, o Dealer
+	 * deverá olhar para a chave da mesma, memorizá-la (num HashMap), e
+	 * sobrescrever a chave. Assim, fica acordado uma chave (presumidamente
+	 * única) para cada jogador.
 	 * </p>
 	 * <p>
 	 * Assim que pelo menos <b> n jogadores </> entrarem, o jogo começa.
@@ -94,12 +100,24 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	public String createNewPlayerNode(final Player player, final int key) throws KeeperException, InterruptedException {
-		if (this.zk.exists("/" + player.getMesa(), false) == null) {
-			throw new IllegalStateException("Um dealer deve ser decidido antes que os players se registrem.");
+	public String createNewPlayerNodeAndWaitTillDealerCall(final Player player) throws KeeperException, InterruptedException {
+		synchronized (ZookeeperService.mutex) {
+			if (this.zk.exists("/" + player.getMesa(), false) == null) {
+				throw new IllegalStateException("Um dealer deve ser decidido antes que os players se registrem.");
+			}
+
+			byte[] mensagemDeRegistro = "Gostaria de entrar na mesa!".getBytes();
+			String nodeName = this.zk.create(ZookeeperService.getCorrectNodeName(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
+					CreateMode.PERSISTENT_SEQUENTIAL);
+			player.setFullName(nodeName);
+
+			while (Arrays.equals(mensagemDeRegistro, this.zk.getData(nodeName, ZookeeperService.getInstance(), null))) {
+				System.out.println("Esperando aviso do Dealer.");
+				ZookeeperService.mutex.wait();
+			}
 		}
-		return this.zk.create("/" + player.getMesa() + "/" + player.getName(), String.valueOf(key).getBytes(), Ids.OPEN_ACL_UNSAFE,
-				CreateMode.PERSISTENT_SEQUENTIAL);
+
+		return null;
 	}
 
 	/**
@@ -119,14 +137,19 @@ public class ZookeeperService implements Watcher, Closeable {
 	}
 
 	public String createZNode(final Player player, final byte[] data) throws KeeperException, InterruptedException {
-		return this.zk.create("/" + player.getMesa() + "/" + player.getName(), data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+		return this.zk.create(player.getMesa() + "/" + player.getName(), data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+	}
+
+	public void alertAllNodes(final String mesa, final List<String> nodes) throws InterruptedException, KeeperException {
+		for (String node : nodes) {
+			this.zk.setData(mesa + "/" + node, "Lance sua aposta!".getBytes(), 0);
+		}
 	}
 
 	@Override
 	public void process(final WatchedEvent event) {
 		synchronized (ZookeeperService.mutex) {
-			// System.out.println("Process: " + event.getType());
-			ZookeeperService.mutex.notify();
+			ZookeeperService.mutex.notifyAll();
 		}
 	}
 
@@ -138,24 +161,25 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * como vazio).
 	 *
 	 * @param mesa
+	 * @return
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	public void registerPlayers(final String mesa) throws KeeperException, InterruptedException {
+	public List<String> waitUntilTableIsFull(final String mesa, final int expectedPlayers) throws KeeperException, InterruptedException {
+		List<String> children = null;
 		synchronized (ZookeeperService.mutex) {
-			boolean empty = true;
-			while (empty) {
-				List<String> children = this.zk.getChildren(mesa, this);
-				empty = children.isEmpty();
-				if (empty) {
+			int numOfPlayers = 0;
+			while (numOfPlayers < expectedPlayers) {
+				children = this.zk.getChildren(mesa, this);
+				numOfPlayers = children.size();
+				if (numOfPlayers < expectedPlayers) {
 					ZookeeperService.mutex.wait();
 				}
+				System.out.println("Player novo entrou, a mesa está com " + numOfPlayers + " de " + expectedPlayers + " mesas ocupadas");
 			}
 		}
 
-		// TODO: Após este ponto, há um player para registrar, ou seja,
-		// precisamos registrá-lo.
-
+		return children;
 	}
 
 }

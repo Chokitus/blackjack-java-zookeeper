@@ -1,6 +1,7 @@
 package java_zookeeper.blackjack.zookeeper;
 
 import java.io.IOException;
+import java.util.List;
 
 import org.apache.zookeeper.KeeperException;
 
@@ -10,22 +11,26 @@ import java_zookeeper.blackjack.game.player.Player;
 
 public class ZookeeperPlayerRegister {
 
-	public static Player registerPlayer(final String mesa, final String name, final int key)
-			throws KeeperException, InterruptedException, IOException {
-		Player player = new Player(mesa, name, key);
-		ZookeeperService.getInstance().createNewPlayerNode(player, key);
-		return null;
+	public static Player registerPlayer(final String mesa, final String name) throws KeeperException, InterruptedException, IOException {
+		Player player = new Player(name, mesa);
+		ZookeeperService.getInstance().createNewPlayerNodeAndWaitTillDealerCall(player);
+
+		// DONE: Player entra na barreira, esperando outros 4 players entrarem.
+
+		return player;
 	}
 
-	public static Player registerDealer(final String mesa, final String name, final int key)
+	public static Dealer registerDealer(final String mesa, final String name, final int expectedPlayers)
 			throws KeeperException, InterruptedException, IOException {
 
-		Dealer dealer = new DealerImpl(name, key);
+		Dealer dealer = new DealerImpl(name, mesa);
 		String mesaName = ZookeeperService.getInstance(null).createNewMesa(mesa);
 
-		ZookeeperService.getInstance().registerPlayers(mesaName);
-
-		System.out.println("SOU O DEALER E ACORDEI NESTA PORRA");
+		/*
+		 * Aguarda até pelo menos @expectedPlayers players entrarem na mesa.
+		 */
+		List<String> players = ZookeeperService.getInstance().waitUntilTableIsFull(mesaName, expectedPlayers);
+		dealer.registerPlayers(players);
 
 		return dealer;
 	}

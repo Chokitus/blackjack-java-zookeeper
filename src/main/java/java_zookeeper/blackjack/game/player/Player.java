@@ -7,6 +7,7 @@ import java_zookeeper.blackjack.game.deck.card.Card;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 
 @RequiredArgsConstructor
 public class Player {
@@ -15,15 +16,16 @@ public class Player {
 
 	@NonNull
 	@Getter
-	private String mesa;
-
-	@NonNull
-	@Getter
+	@Setter
 	private String name;
 
+	@Setter
+	@Getter
+	private String fullName = "";
+
 	@NonNull
 	@Getter
-	private Integer key;
+	private String mesa;
 
 	@Getter
 	List<Card> hand = new ArrayList<>();
