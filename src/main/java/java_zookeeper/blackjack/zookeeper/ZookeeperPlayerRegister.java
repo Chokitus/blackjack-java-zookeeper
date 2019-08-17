@@ -26,6 +26,9 @@ public class ZookeeperPlayerRegister {
 		Dealer dealer = new DealerImpl(name, mesa);
 		String mesaName = ZookeeperService.getInstance(null).createNewMesa(mesa);
 
+		dealer.setFullName("/" + mesa + "/dealer");
+		ZookeeperService.getInstance().createPlayerNode(dealer, new byte[0], true);
+
 		/*
 		 * Aguarda até pelo menos @expectedPlayers players entrarem na mesa.
 		 */

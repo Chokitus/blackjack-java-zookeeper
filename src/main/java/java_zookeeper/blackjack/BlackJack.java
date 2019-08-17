@@ -34,8 +34,11 @@ public class BlackJack {
 		 * TODO: Analisar também a carta das outras pessoas
 		 */
 		BlackjackGameService.waitForCards(player, 2);
-
-		player.printHand();
+		/**
+		 * Terceiro passo: Ver cartas das outras pessoas, do Dealer, suas
+		 * próprias cartas e escolher uma ação
+		 */
+		BlackjackGameService.seeTableAndAct(player);
 	}
 
 	private void playDealerGame(final Dealer dealer) throws KeeperException, InterruptedException {
@@ -51,6 +54,12 @@ public class BlackJack {
 		 * Terceiro passo: dar carta para si mesmo
 		 */
 		BlackjackGameService.sendCardToMyself(dealer);
+		/**
+		 * Quarto passo: perguntar ação, agora que todos estão com as cartas. As
+		 * ações possíveis são: Dobrar (que consiste em dobrar sua aposta e
+		 * pegar uma carta), Pedir carta, Parar e Desistir *
+		 */
+		BlackjackGameService.askForActions(dealer);
 
 	}
 }

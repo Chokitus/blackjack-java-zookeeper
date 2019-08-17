@@ -24,11 +24,11 @@ public abstract class Dealer extends Player {
 
 	public void registerPlayers(final List<String> listOfPlayers) {
 		this.listOfPlayers = new ArrayList<>();
-		for (String playerName : listOfPlayers) {
+		listOfPlayers.stream().filter(player -> !"dealer".equals(player)).forEach(playerName -> {
 			Player player = new Player(playerName, this.getMesa());
 			player.setFullName("/" + this.getMesa() + "/" + playerName);
 			this.listOfPlayers.add(player);
-		}
+		});
 	}
 
 }

@@ -110,8 +110,7 @@ public class ZookeeperService implements Watcher, Closeable {
 			}
 
 			byte[] mensagemDeRegistro = "Gostaria de entrar na mesa!".getBytes();
-			String nodeName = this.zk.create(ZookeeperService.getNodePathToPlayer(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
-					CreateMode.PERSISTENT_SEQUENTIAL);
+			String nodeName = this.createPlayerNode(player, mensagemDeRegistro, false);
 			player.setFullName(nodeName);
 
 			while (Arrays.equals(mensagemDeRegistro, this.zk.getData(nodeName, ZookeeperService.getInstance(), null))) {
@@ -121,6 +120,27 @@ public class ZookeeperService implements Watcher, Closeable {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Cria um nó de Player. Deve ser usado com
+	 * {@link #createNewPlayerNodeAndWaitTillDealerCall(Player)}, ou chamado
+	 * pelo Dealer no
+	 * {@link ZookeeperPlayerRegister#registerDealer(String, String, int)}
+	 *
+	 * @param player
+	 * @param mensagemDeRegistro
+	 * @param isDealer
+	 *            Se verdadeiro, cria o nó com o nome exato, senão cria como
+	 *            sequential (ambos persistentes)
+	 * @return
+	 * @throws KeeperException
+	 * @throws InterruptedException
+	 */
+	public String createPlayerNode(final Player player, final byte[] mensagemDeRegistro, final boolean isDealer)
+			throws KeeperException, InterruptedException {
+		return this.zk.create(ZookeeperService.getNodePathToPlayer(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
+				isDealer ? CreateMode.PERSISTENT : CreateMode.PERSISTENT_SEQUENTIAL);
 	}
 
 	/**
@@ -180,6 +200,7 @@ public class ZookeeperService implements Watcher, Closeable {
 			}
 		}
 
+		ZookeeperService.log.info("Seguindo com o jogo!");
 		return children;
 	}
 
@@ -206,9 +227,9 @@ public class ZookeeperService implements Watcher, Closeable {
 		return Card.cardFromBytes(this.zk.getData(child, false, null));
 	}
 
-	public byte[] getDataFromPlayerNode(final Player player) throws KeeperException, InterruptedException {
-		return ZookeeperService.getInstance().zk.getData(ZookeeperService.getNodePathToPlayer(player), ZookeeperService.getInstance(),
-				null);
+	public byte[] getDataFromPlayerNode(final Player player, final boolean watch) throws KeeperException, InterruptedException {
+		return ZookeeperService.getInstance().zk.getData(ZookeeperService.getNodePathToPlayer(player),
+				watch ? ZookeeperService.getInstance() : null, null);
 	}
 
 }

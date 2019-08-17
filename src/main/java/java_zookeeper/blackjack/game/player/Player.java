@@ -34,6 +34,10 @@ public class Player {
 	private Integer aposta;
 
 	@Getter
+	@Setter
+	private List<Card> drawnCards;
+
+	@Getter
 	List<Card> hand = new ArrayList<>();
 
 	public void addToHand(final Card card) {
