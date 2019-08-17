@@ -15,7 +15,9 @@ import org.apache.zookeeper.ZooKeeper;
 import java_zookeeper.blackjack.game.deck.card.Card;
 import java_zookeeper.blackjack.game.player.Player;
 import lombok.Getter;
+import lombok.extern.log4j.Log4j;
 
+@Log4j
 public class ZookeeperService implements Watcher, Closeable {
 
 	@Getter
@@ -47,7 +49,7 @@ public class ZookeeperService implements Watcher, Closeable {
 	public static ZookeeperService getInstance() {
 		return ZookeeperService.getInstance(null);
 	}
-	public static String getCorrectNodeName(final Player player) {
+	public static String getNodePathToPlayer(final Player player) {
 		return "".equals(player.getFullName())
 				? new StringBuilder("/").append(player.getMesa()).append("/").append(player.getName()).toString()
 				: player.getFullName();
@@ -76,6 +78,7 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * @throws InterruptedException
 	 */
 	public synchronized String createNewMesa(final String mesa) throws KeeperException, InterruptedException {
+		ZookeeperService.log.info("Criando nova mesa de nome" + mesa);
 		return this.zk.create("/" + mesa, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
 	}
 
@@ -107,7 +110,7 @@ public class ZookeeperService implements Watcher, Closeable {
 			}
 
 			byte[] mensagemDeRegistro = "Gostaria de entrar na mesa!".getBytes();
-			String nodeName = this.zk.create(ZookeeperService.getCorrectNodeName(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
+			String nodeName = this.zk.create(ZookeeperService.getNodePathToPlayer(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
 					CreateMode.PERSISTENT_SEQUENTIAL);
 			player.setFullName(nodeName);
 
@@ -121,10 +124,7 @@ public class ZookeeperService implements Watcher, Closeable {
 	}
 
 	/**
-	 * Encontra o nó contendo o nome do player (que estará em "/" +
-	 * player.getMesa() + "/" + player.getNome()) e seta os dados como a carda
-	 * desejada. A verdade é que não é um create, mas sim um set, mas como esta
-	 * parte ainda não está feita, fica como TODO
+	 * Cria um nó que representa a carta abaixo do Player.
 	 *
 	 * @param player
 	 * @param card
@@ -133,11 +133,11 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * @throws InterruptedException
 	 */
 	public String enviarCardParaPlayer(final Player player, final Card card) throws KeeperException, InterruptedException {
-		return this.createZNode(player, card.serialize(player));
+		return this.createZNode(player, card.getBytes());
 	}
 
 	public String createZNode(final Player player, final byte[] data) throws KeeperException, InterruptedException {
-		return this.zk.create(player.getMesa() + "/" + player.getName(), data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
+		return this.zk.create(player.getFullName() + "/", data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 	}
 
 	public void alertAllNodes(final String mesa, final List<String> nodes) throws InterruptedException, KeeperException {
@@ -175,11 +175,40 @@ public class ZookeeperService implements Watcher, Closeable {
 				if (numOfPlayers < expectedPlayers) {
 					ZookeeperService.mutex.wait();
 				}
-				System.out.println("Player novo entrou, a mesa está com " + numOfPlayers + " de " + expectedPlayers + " mesas ocupadas");
+				ZookeeperService.log.info(new StringBuilder("Player novo entrou, a mesa está com ").append(numOfPlayers).append(" de ")
+						.append(expectedPlayers).append(" mesas ocupadas"));
 			}
 		}
 
 		return children;
+	}
+
+	public void setDataToPlayerNode(final Player player, final byte[] bytes, final int version)
+			throws KeeperException, InterruptedException {
+		ZookeeperService.getInstance().zk.setData(ZookeeperService.getNodePathToPlayer(player), bytes, version);
+	}
+
+	public void waitForCards(final Player player, final int expectedCards) throws KeeperException, InterruptedException {
+		synchronized (ZookeeperService.mutex) {
+			List<String> children = this.zk.getChildren(ZookeeperService.getNodePathToPlayer(player), true);
+
+			while (children.size() < expectedCards) {
+				ZookeeperService.mutex.wait();
+				children = this.zk.getChildren(ZookeeperService.getNodePathToPlayer(player), true);
+			}
+			for (String child : children) {
+				player.addToHand(this.getCardFromPath(player.getFullName() + "/" + child));
+			}
+		}
+	}
+
+	private Card getCardFromPath(final String child) throws KeeperException, InterruptedException {
+		return Card.cardFromBytes(this.zk.getData(child, false, null));
+	}
+
+	public byte[] getDataFromPlayerNode(final Player player) throws KeeperException, InterruptedException {
+		return ZookeeperService.getInstance().zk.getData(ZookeeperService.getNodePathToPlayer(player), ZookeeperService.getInstance(),
+				null);
 	}
 
 }

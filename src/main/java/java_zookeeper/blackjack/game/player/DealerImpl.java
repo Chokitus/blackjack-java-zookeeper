@@ -6,14 +6,4 @@ public class DealerImpl extends Dealer {
 		super(name, mesa);
 	}
 
-	@Override
-	public void checkQueue() {
-		// TODO
-	}
-
-	@Override
-	public void distributeCards() {
-		// TODO
-	}
-
 }

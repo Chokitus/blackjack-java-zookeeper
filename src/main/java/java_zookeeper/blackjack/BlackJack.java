@@ -24,15 +24,33 @@ public class BlackJack {
 	}
 
 	private void playPlayerGame(final Player player) throws KeeperException, InterruptedException {
+		/**
+		 * Primeiro passo: responder ao pedido de apostas do dealer
+		 */
 		BlackjackGameService.bet(player);
+		/**
+		 * Segundo passo: esperar distribuição das cartas
+		 *
+		 * TODO: Analisar também a carta das outras pessoas
+		 */
+		BlackjackGameService.waitForCards(player, 2);
+
+		player.printHand();
 	}
 
 	private void playDealerGame(final Dealer dealer) throws KeeperException, InterruptedException {
 		/**
 		 * Primeiro passo: Pedir apostas
 		 */
-		for (Player player : dealer.getListOfPlayers()) {
-			BlackjackGameService.askForBet(player);
-		}
+		BlackjackGameService.askForBet(dealer);
+		/**
+		 * Segundo passo: distribuir cartas
+		 */
+		BlackjackGameService.distributeCards(dealer);
+		/**
+		 * Terceiro passo: dar carta para si mesmo
+		 */
+		BlackjackGameService.sendCardToMyself(dealer);
+
 	}
 }

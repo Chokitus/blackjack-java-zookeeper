@@ -8,8 +8,14 @@ import java_zookeeper.blackjack.game.deck.card.Card;
 
 public class DeckGenerator {
 
+	private static DeckGenerator gen;
+
 	private List<Integer> listOfCards = new ArrayList<>();
 	private Random rng = new Random();
+
+	private DeckGenerator() {
+		/* Vazio - Singleton */
+	}
 
 	public Card nextCard() {
 		int rnged = this.getNewCard();
@@ -24,5 +30,16 @@ public class DeckGenerator {
 			rnged = this.rng.nextInt(52) + 1;
 		}
 		return rnged;
+	}
+
+	public void reset() {
+		this.listOfCards.clear();
+	}
+
+	public static DeckGenerator getGenerator() {
+		if (DeckGenerator.gen == null) {
+			DeckGenerator.gen = new DeckGenerator();
+		}
+		return DeckGenerator.gen;
 	}
 }
