@@ -15,7 +15,7 @@ public class BlackJack {
 	public static void main(final String[] args) throws IOException, InterruptedException, KeeperException {
 		ZookeeperService.createInstance("localhost:2181");
 		if (args[0].equals("dealer")) {
-			Dealer dealer = ZookeeperPlayerRegister.registerDealer("001", "NomeDoDealer", 5);
+			Dealer dealer = ZookeeperPlayerRegister.registerDealer("001", "NomeDoDealer", 3);
 			new BlackJack().playDealerGame(dealer);
 		} else {
 			Player player = ZookeeperPlayerRegister.registerPlayer("001", "NomeDoPlayer");
@@ -24,21 +24,33 @@ public class BlackJack {
 	}
 
 	private void playPlayerGame(final Player player) throws KeeperException, InterruptedException {
-		/**
+		/*
 		 * Primeiro passo: responder ao pedido de apostas do dealer
 		 */
 		BlackjackGameService.bet(player);
-		/**
+		/*
 		 * Segundo passo: esperar distribuição das cartas
 		 *
 		 * TODO: Analisar também a carta das outras pessoas
 		 */
 		BlackjackGameService.waitForCards(player, 2);
+		/*
+		 * Terceiro passo: espera até que um pedido por ação chegue
+		 */
+		BlackjackGameService.waitUntilAskedForActions(player);
 		/**
+		 * Quarto passo: Olha para a mão das outras pessoas (e, em especial, do
+		 * Dealer)
+		 */
+		BlackjackGameService.seeTable(player);
+		/*
 		 * Terceiro passo: Ver cartas das outras pessoas, do Dealer, suas
 		 * próprias cartas e escolher uma ação
 		 */
-		BlackjackGameService.seeTableAndAct(player);
+		BlackjackGameService.act(player);
+
+		player.printHand();
+		System.out.println(player.getScore());
 	}
 
 	private void playDealerGame(final Dealer dealer) throws KeeperException, InterruptedException {
@@ -60,6 +72,16 @@ public class BlackJack {
 		 * pegar uma carta), Pedir carta, Parar e Desistir *
 		 */
 		BlackjackGameService.askForActions(dealer);
-
+		/*
+		 * Quinto passo: O Dealer, após todos os jogadores estarem confortáveis
+		 * com suas mãos, completa sua mão até dar 17
+		 */
+		BlackjackGameService.fillHandUntilMinimum(dealer);
+		/*
+		 * Último passo: Todos os players finalizaram sua mão, o Dealer
+		 * completou sua mão até 17 (no mínimo), e assim, o Dealer deverá
+		 * verificar os ganhadores, pagando-os ou pegando suas apostas.
+		 */
+		BlackjackGameService.verifyWinners(dealer);
 	}
 }

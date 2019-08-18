@@ -4,11 +4,13 @@ import java.io.Serializable;
 
 import org.apache.commons.lang3.SerializationUtils;
 
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 
 @Getter
 @Setter
+@EqualsAndHashCode
 public class Card implements Serializable {
 
 	private static final long serialVersionUID = 1L;

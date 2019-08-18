@@ -14,6 +14,7 @@ import lombok.extern.log4j.Log4j;
 @Log4j
 public class Player {
 
+	@Getter
 	private int score = 0;
 
 	@NonNull
@@ -41,8 +42,10 @@ public class Player {
 	List<Card> hand = new ArrayList<>();
 
 	public void addToHand(final Card card) {
-		this.hand.add(card);
-		this.score += card.getNumericValue(this.score);
+		if (!this.hand.contains(card)) {
+			this.hand.add(card);
+			this.score += card.getNumericValue(this.score);
+		}
 	}
 
 	public void printHand() {
@@ -52,6 +55,10 @@ public class Player {
 				System.out.println("!");
 			}
 		}
+	}
+
+	public void dobrarAposta() {
+		this.aposta *= 2;
 	}
 
 }
