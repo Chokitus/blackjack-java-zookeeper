@@ -72,6 +72,7 @@ public abstract class BlackjackGameServiceHelper {
 
 	protected static void sendCard(final Card card, final Player player) throws KeeperException, InterruptedException {
 		ZookeeperService.getInstance().enviarCardParaPlayer(player, card);
+		player.addToHand(card);
 	}
 
 	protected static boolean askForAction(final Dealer dealer, final Player player) throws KeeperException, InterruptedException {

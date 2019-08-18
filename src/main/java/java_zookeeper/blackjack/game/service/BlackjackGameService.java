@@ -109,8 +109,8 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		System.out.println(BlackjackGameServiceHelper.ACAO_STRING);
 	}
 
-	public static void seeTable(final Player player) {
-		// TODO Auto-generated method stub
+	public static void seeTable(final Player player) throws KeeperException, InterruptedException {
+		ZookeeperService.getInstance().getDrawnCards(player);
 	}
 
 	public static void fillHandUntilMinimum(final Dealer dealer) throws KeeperException, InterruptedException {
@@ -120,7 +120,39 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 	}
 
 	public static void verifyWinners(final Dealer dealer) {
+		int dealerScore = dealer.getScore();
+		System.out.println(dealerScore);
+		if (dealerScore > 21) {
+			for (Player player : dealer.getListOfPlayers()) {
+				player.printHand();
+				int playerScore = player.getScore();
+				System.out.println(playerScore);
+				if (playerScore <= 21) {
+					System.out.println("Player " + player.getName() + " ganhou!");
+					player.setToCurrentMoney(BlackjackGameService.getReward(playerScore, player.getAposta()));
+				} else {
+					System.out.println("Player " + player.getName() + " perdeu!");
+					player.setToCurrentMoney(-player.getAposta());
+				}
+			}
+		} else {
+			for (Player player : dealer.getListOfPlayers()) {
+				player.printHand();
+				int playerScore = player.getScore();
+				System.out.println(playerScore);
+				if (playerScore > dealerScore) {
+					System.out.println("Player " + player.getName() + " ganhou!");
+					player.setToCurrentMoney(BlackjackGameService.getReward(playerScore, player.getAposta()));
+				} else if (playerScore < dealerScore) {
+					System.out.println("Player " + player.getName() + " perdeu!");
+					player.setToCurrentMoney(-player.getAposta());
+				}
+			}
+		}
+	}
 
+	private static int getReward(final int playerScore, final int aposta) {
+		return (int) (playerScore == 21 ? aposta * 1.5 : aposta);
 	}
 
 }

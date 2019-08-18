@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
+import org.apache.commons.lang3.SerializationUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
@@ -93,7 +94,7 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * única) para cada jogador.
 	 * </p>
 	 * <p>
-	 * Assim que pelo menos <b> n jogadores </> entrarem, o jogo começa.
+	 * Assim que pelo menos <b> n jogadores </b> entrarem, o jogo começa.
 	 * </p>
 	 *
 	 * @param mesa
@@ -160,12 +161,6 @@ public class ZookeeperService implements Watcher, Closeable {
 		return this.zk.create(player.getFullName() + "/", data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
 	}
 
-	public void alertAllNodes(final String mesa, final List<String> nodes) throws InterruptedException, KeeperException {
-		for (String node : nodes) {
-			this.zk.setData(mesa + "/" + node, "Lance sua aposta!".getBytes(), 0);
-		}
-	}
-
 	@Override
 	public void process(final WatchedEvent event) {
 		synchronized (ZookeeperService.mutex) {
@@ -230,6 +225,22 @@ public class ZookeeperService implements Watcher, Closeable {
 	public byte[] getDataFromPlayerNode(final Player player, final boolean watch) throws KeeperException, InterruptedException {
 		return ZookeeperService.getInstance().zk.getData(ZookeeperService.getNodePathToPlayer(player),
 				watch ? ZookeeperService.getInstance() : null, null);
+	}
+
+	public void getDrawnCards(final Player player) throws KeeperException, InterruptedException {
+		String mesa = "/" + player.getMesa();
+		List<String> players = this.zk.getChildren(mesa, false);
+
+		for (String otherPlayer : players) {
+			String playerNode = mesa + "/" + otherPlayer;
+			List<String> cards = this.zk.getChildren(playerNode, false);
+			System.out.println(otherPlayer);
+			for (String card : cards) {
+				String cardNode = playerNode + "/" + card;
+				Card cardFromNode = SerializationUtils.deserialize(this.zk.getData(cardNode, false, null));
+				System.out.println(cardFromNode);
+			}
+		}
 	}
 
 }

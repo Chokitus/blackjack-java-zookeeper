@@ -15,7 +15,7 @@ public class BlackJack {
 	public static void main(final String[] args) throws IOException, InterruptedException, KeeperException {
 		ZookeeperService.createInstance("localhost:2181");
 		if (args[0].equals("dealer")) {
-			Dealer dealer = ZookeeperPlayerRegister.registerDealer("001", "NomeDoDealer", 3);
+			Dealer dealer = ZookeeperPlayerRegister.registerDealer("001", "NomeDoDealer", 8);
 			new BlackJack().playDealerGame(dealer);
 		} else {
 			Player player = ZookeeperPlayerRegister.registerPlayer("001", "NomeDoPlayer");

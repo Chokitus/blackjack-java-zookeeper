@@ -35,6 +35,9 @@ public class Player {
 	private Integer aposta;
 
 	@Getter
+	private int currentMoney;
+
+	@Getter
 	@Setter
 	private List<Card> drawnCards;
 
@@ -49,6 +52,7 @@ public class Player {
 	}
 
 	public void printHand() {
+		Player.log.info("Meu nome é " + this.getName());
 		for (Card card : this.hand) {
 			Player.log.info(card);
 			if (card.toString().contains("  de")) {
@@ -59,6 +63,10 @@ public class Player {
 
 	public void dobrarAposta() {
 		this.aposta *= 2;
+	}
+
+	public void setToCurrentMoney(final int valor) {
+		this.currentMoney += valor;
 	}
 
 }
