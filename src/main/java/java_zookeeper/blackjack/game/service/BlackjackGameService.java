@@ -1,5 +1,7 @@
 package java_zookeeper.blackjack.game.service;
 
+import java.util.List;
+
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.zookeeper.KeeperException;
 
@@ -42,6 +44,7 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		 */
 		System.out.println("Apostando: 100");
 		byte[] myBet = SerializationUtils.serialize(Integer.valueOf(100));
+		player.setAposta(100);
 		ZookeeperService.getInstance().setDataToPlayerNode(player, myBet, 1);
 	}
 
@@ -96,7 +99,7 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 	public static boolean actAndWaitForAnswer(final Player player, final BlackjackRoundAction action)
 			throws KeeperException, InterruptedException {
 		byte[] bytes = SerializationUtils.serialize(action);
-		byte[] answer = BlackjackGameServiceHelper.requestAndWaitForAnswer(player, bytes);
+		BlackjackGameServiceHelper.requestAndWaitForAnswer(player, bytes);
 		if (BlackjackRoundAction.UMA_CARTA.equals(action) || BlackjackRoundAction.DOBRAR.equals(action)) {
 			BlackjackGameService.waitForCards(player, player.getHand().size() + 1);
 			return true;
@@ -119,40 +122,25 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		}
 	}
 
-	public static void verifyWinners(final Dealer dealer) {
+	public static void verifyWinnersAndDoPayouts(final Dealer dealer) {
 		int dealerScore = dealer.getScore();
-		System.out.println(dealerScore);
-		if (dealerScore > 21) {
-			for (Player player : dealer.getListOfPlayers()) {
-				player.printHand();
-				int playerScore = player.getScore();
-				System.out.println(playerScore);
-				if (playerScore <= 21) {
-					System.out.println("Player " + player.getName() + " ganhou!");
-					player.setToCurrentMoney(BlackjackGameService.getReward(playerScore, player.getAposta()));
-				} else {
-					System.out.println("Player " + player.getName() + " perdeu!");
-					player.setToCurrentMoney(-player.getAposta());
-				}
-			}
-		} else {
-			for (Player player : dealer.getListOfPlayers()) {
-				player.printHand();
-				int playerScore = player.getScore();
-				System.out.println(playerScore);
-				if (playerScore > dealerScore) {
-					System.out.println("Player " + player.getName() + " ganhou!");
-					player.setToCurrentMoney(BlackjackGameService.getReward(playerScore, player.getAposta()));
-				} else if (playerScore < dealerScore) {
-					System.out.println("Player " + player.getName() + " perdeu!");
-					player.setToCurrentMoney(-player.getAposta());
-				}
-			}
+		/*
+		 * Verifica se o Dealer passou de 21. Caso tenha passado, para ganhar
+		 * basta não ter passado você mesmo
+		 */
+		for (Player player : dealer.getListOfPlayers()) {
+			player.printHand();
+			int playerScore = player.getScore();
+			System.out.println(playerScore);
+			BlackjackGameServiceHelper.verifyWinner(dealerScore, player, playerScore);
 		}
 	}
 
-	private static int getReward(final int playerScore, final int aposta) {
-		return (int) (playerScore == 21 ? aposta * 1.5 : aposta);
+	public static void verifyPlayerResults(final Player player) throws KeeperException, InterruptedException {
+		List<Card> dealerCards = ZookeeperService.getInstance().getDealerCards(player);
+		int dealerScore = Dealer.calculateScore(dealerCards);
+		int playerScore = player.getScore();
+		BlackjackGameServiceHelper.verifyWinner(dealerScore, player, playerScore);
 	}
 
 }

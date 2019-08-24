@@ -2,6 +2,7 @@ package java_zookeeper.blackjack.zookeeper;
 
 import java.io.Closeable;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -15,14 +16,12 @@ import org.apache.zookeeper.ZooKeeper;
 
 import java_zookeeper.blackjack.game.deck.card.Card;
 import java_zookeeper.blackjack.game.player.Player;
-import lombok.Getter;
 import lombok.extern.log4j.Log4j;
 
 @Log4j
 public class ZookeeperService implements Watcher, Closeable {
 
-	@Getter
-	public ZooKeeper zk = null;
+	private ZooKeeper zk = null;
 
 	public static Object mutex = new Object();
 
@@ -233,14 +232,25 @@ public class ZookeeperService implements Watcher, Closeable {
 
 		for (String otherPlayer : players) {
 			String playerNode = mesa + "/" + otherPlayer;
-			List<String> cards = this.zk.getChildren(playerNode, false);
-			System.out.println(otherPlayer);
-			for (String card : cards) {
-				String cardNode = playerNode + "/" + card;
-				Card cardFromNode = SerializationUtils.deserialize(this.zk.getData(cardNode, false, null));
-				System.out.println(cardFromNode);
-			}
+			List<Card> cardsFromPlayer = this.getCardsFromPlayerNode(playerNode);
+			cardsFromPlayer.forEach(card -> System.out.println(card));
 		}
+	}
+
+	private List<Card> getCardsFromPlayerNode(final String playerNode) throws KeeperException, InterruptedException {
+		List<String> cards = this.zk.getChildren(playerNode, false);
+		List<Card> listOfCards = new ArrayList<>();
+		for (String card : cards) {
+			String cardNode = playerNode + "/" + card;
+			Card cardFromNode = SerializationUtils.deserialize(this.zk.getData(cardNode, false, null));
+			listOfCards.add(cardFromNode);
+		}
+		return listOfCards;
+	}
+
+	public List<Card> getDealerCards(final Player player) throws KeeperException, InterruptedException {
+		String dealerNode = new StringBuilder("/").append(player.getMesa()).append("/dealer").toString();
+		return this.getCardsFromPlayerNode(dealerNode);
 	}
 
 }

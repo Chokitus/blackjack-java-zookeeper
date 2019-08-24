@@ -30,8 +30,6 @@ public class BlackJack {
 		BlackjackGameService.bet(player);
 		/*
 		 * Segundo passo: esperar distribuição das cartas
-		 *
-		 * TODO: Analisar também a carta das outras pessoas
 		 */
 		BlackjackGameService.waitForCards(player, 2);
 		/*
@@ -48,6 +46,13 @@ public class BlackJack {
 		 * próprias cartas e escolher uma ação
 		 */
 		BlackjackGameService.act(player);
+		/*
+		 * TODO: Quarto passo: ver se ganhamos
+		 */
+		BlackjackGameService.verifyPlayerResults(player);
+		/*
+		 * TODO: Quinto passo: resetar
+		 */
 
 		player.printHand();
 		System.out.println(player.getScore());
@@ -82,6 +87,10 @@ public class BlackJack {
 		 * completou sua mão até 17 (no mínimo), e assim, o Dealer deverá
 		 * verificar os ganhadores, pagando-os ou pegando suas apostas.
 		 */
-		BlackjackGameService.verifyWinners(dealer);
+		BlackjackGameService.verifyWinnersAndDoPayouts(dealer);
+		/**
+		 * Aqui devemos resetar
+		 */
+		// BlackjackGameService.cleanTableForNextRound(dealer);
 	}
 }

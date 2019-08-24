@@ -2,6 +2,7 @@ package java_zookeeper.blackjack.game.player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import java_zookeeper.blackjack.game.deck.card.Card;
 import lombok.Getter;
@@ -45,10 +46,24 @@ public class Player {
 	List<Card> hand = new ArrayList<>();
 
 	public void addToHand(final Card card) {
+		List<Card> aces = this.hand.stream().filter(c -> "A".equals(c.getValor())).collect(Collectors.toList());
+		List<Card> notAces = this.hand.stream().filter(c -> !"A".equals(c.getValor())).collect(Collectors.toList());
 		if (!this.hand.contains(card)) {
 			this.hand.add(card);
-			this.score += card.getNumericValue(this.score);
+			if ("A".equals(card.getValor())) {
+				aces.add(card);
+			} else {
+				notAces.add(card);
+			}
+			this.score = this.calculateScore(notAces, aces);
 		}
+	}
+
+	private int calculateScore(final List<Card> notAces, final List<Card> aces) {
+		this.score = 0;
+		notAces.forEach(card -> this.score += card.getNumericValue(this.score));
+		aces.forEach(card -> this.score += card.getNumericValue(this.score));
+		return this.score;
 	}
 
 	public void printHand() {
@@ -67,6 +82,12 @@ public class Player {
 
 	public void setToCurrentMoney(final int valor) {
 		this.currentMoney += valor;
+	}
+
+	public void newRound() {
+		this.aposta = 0;
+		this.score = 0;
+		this.hand.clear();
 	}
 
 }

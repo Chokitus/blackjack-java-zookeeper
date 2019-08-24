@@ -152,4 +152,33 @@ public abstract class BlackjackGameServiceHelper {
 		}
 		return BlackjackRoundAction.PARAR;
 	}
+
+	protected static int getReward(final int playerScore, final int aposta) {
+		return (int) (playerScore == 21 ? aposta * 1.5 : aposta);
+	}
+
+	protected static void verifyWinner(final int dealerScore, final Player player, final int playerScore) {
+		if (dealerScore > 21) {
+			/*
+			 * Se não passou de 21, ganhou! Se ficou com 21, ainda ganha um
+			 * adicional de 50% da aposta
+			 */
+			if (playerScore <= 21) {
+				System.out.println("Player " + player.getName() + " ganhou!");
+				player.setToCurrentMoney(BlackjackGameServiceHelper.getReward(playerScore, player.getAposta()));
+			} else {
+				System.out.println("Player " + player.getName() + " empatou e não ganha nada!");
+			}
+		} else {
+			if (playerScore > dealerScore && playerScore <= 21) {
+				System.out.println("Player " + player.getName() + " ganhou!");
+				player.setToCurrentMoney(BlackjackGameServiceHelper.getReward(playerScore, player.getAposta()));
+			} else if (playerScore == dealerScore) {
+				System.out.println("Player " + player.getName() + " empatou e não ganha nada!");
+			} else {
+				System.out.println("Player " + player.getName() + " perdeu!");
+				player.setToCurrentMoney(-player.getAposta());
+			}
+		}
+	}
 }

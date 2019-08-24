@@ -12,6 +12,8 @@ public abstract class Dealer extends Player {
 	@Getter
 	private List<Player> listOfPlayers;
 
+	private static Player tempDealer = new Player("temp", "temp");
+
 	private DeckGenerator deckGen = DeckGenerator.getGenerator();
 
 	public Dealer(final String nome, final String mesa) {
@@ -29,6 +31,15 @@ public abstract class Dealer extends Player {
 			player.setFullName("/" + this.getMesa() + "/" + playerName);
 			this.listOfPlayers.add(player);
 		});
+	}
+
+	public static int calculateScore(final List<Card> dealerCards) {
+		for (Card card : dealerCards) {
+			Dealer.tempDealer.addToHand(card);
+		}
+		int dealerScore = Dealer.tempDealer.getScore();
+		Dealer.tempDealer.newRound();
+		return dealerScore;
 	}
 
 }
