@@ -162,7 +162,8 @@ public abstract class BlackjackGameServiceHelper {
 		return (int) (playerScore == 21 ? aposta * 1.5 : aposta);
 	}
 
-	protected static void verifyWinner(final int dealerScore, final Player player, final int playerScore) {
+	protected static void verifyWinner(final int dealerScore, final Player player, final int playerScore)
+			throws KeeperException, InterruptedException {
 		StringBuilder playerString = new StringBuilder("Player ").append(player.getName());
 		if (dealerScore > 21) {
 			/*

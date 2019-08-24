@@ -1,6 +1,6 @@
 package java_zookeeper.blackjack;
 
-import java.io.IOException;
+import java.util.Scanner;
 
 import org.apache.zookeeper.KeeperException;
 
@@ -14,14 +14,39 @@ import lombok.extern.log4j.Log4j;
 @Log4j
 public class BlackJack {
 
-	public static void main(final String[] args) throws IOException, InterruptedException, KeeperException {
+	public static void main(final String[] args) throws InterruptedException, KeeperException {
+		Scanner input = new Scanner(System.in);
+
 		ZookeeperService.createInstance("localhost:2181");
-		if (args[0].equals("dealer")) {
-			Dealer dealer = ZookeeperPlayerRegister.registerDealer("001", "NomeDoDealer", 3);
-			new BlackJack().playDealerGame(dealer);
+		String nomeDoPlayer = input.nextLine();
+		ZookeeperPlayerRegister.electLeader("001", nomeDoPlayer);
+
+		// if (args[0].equals("dealer")) {
+		// Dealer dealer = ZookeeperPlayerRegister.registerDealer("001",
+		// "NomeDoDealer", 3);
+		// ExecutorService executor = Executors.newSingleThreadExecutor();
+		// executor.submit(() -> {
+		// try {
+		// new BlackJack().playDealerGame(dealer);
+		// } catch (KeeperException | InterruptedException e) {
+		// e.printStackTrace();
+		// }
+		// });
+		// } else {
+		// Player player = ZookeeperPlayerRegister.registerPlayer("001",
+		// "NomeDoPlayer", false);
+		// new BlackJack().playPlayerGame(player);
+		// }
+	}
+
+	public void play(final int waitFor, final String mesa, final String nomeDoPlayer, final boolean firstTime)
+			throws KeeperException, InterruptedException {
+		if (waitFor == 0) {
+			Player player = ZookeeperPlayerRegister.registerPlayer(mesa, nomeDoPlayer, firstTime);
+			this.playPlayerGame(player);
 		} else {
-			Player player = ZookeeperPlayerRegister.registerPlayer("001", "NomeDoPlayer");
-			new BlackJack().playPlayerGame(player);
+			Dealer dealer = ZookeeperPlayerRegister.registerDealer(mesa, nomeDoPlayer, 2);
+			this.playDealerGame(dealer);
 		}
 	}
 
@@ -70,14 +95,15 @@ public class BlackJack {
 			 */
 			BlackjackGameService.registerForNextRound(player);
 			/*
-			 * Nono passo: aguardar Dealer anunciar novo round
+			 * Décimo passo: aguardar Dealer anunciar novo round
 			 */
 			BlackjackGameService.waitUntilNextRound(player);
 		}
 	}
 
 	private void playDealerGame(final Dealer dealer) throws KeeperException, InterruptedException {
-		while (!dealer.getListOfPlayers().isEmpty()) {
+		while (true) {
+			BlackjackGameService.registerPlayersForRound(dealer);
 			/**
 			 * Primeiro passo: Pedir apostas
 			 */
@@ -106,7 +132,7 @@ public class BlackJack {
 			 * completou sua mão até 17 (no mínimo), e assim, o Dealer deverá
 			 * verificar os ganhadores, pagando-os ou pegando suas apostas.
 			 */
-			BlackjackGameService.verifyWinnersAndDoPayouts(dealer);
+			BlackjackGameService.alertPlayersForEndOfRound(dealer);
 			if (dealer.getListOfPlayers().isEmpty()) {
 				return;
 			}
@@ -119,7 +145,6 @@ public class BlackJack {
 			 * próximo round.
 			 */
 			BlackjackGameService.waitUntilAllPlayersAreReady(dealer);
-
 		}
 	}
 }

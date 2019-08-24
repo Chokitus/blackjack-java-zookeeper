@@ -122,17 +122,11 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		}
 	}
 
-	public static void verifyWinnersAndDoPayouts(final Dealer dealer) throws KeeperException, InterruptedException {
-		int dealerScore = dealer.getScore();
-		/*
-		 * Verifica se o Dealer passou de 21. Caso tenha passado, para ganhar
-		 * basta não ter passado você mesmo
-		 */
+	public static void alertPlayersForEndOfRound(final Dealer dealer) throws KeeperException, InterruptedException {
 		for (Player player : dealer.getListOfPlayers()) {
 			player.printHand();
 			int playerScore = player.getScore();
 			System.out.println(playerScore);
-			BlackjackGameServiceHelper.verifyWinner(dealerScore, player, playerScore);
 			/*
 			 * Acorda o Player para que ele também verifique se ganhou
 			 */
@@ -181,6 +175,12 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 
 	public static void registerForNextRound(final Player player) throws KeeperException, InterruptedException {
 		ZookeeperService.getInstance().registerPlayerForNextRound(player);
+	}
+
+	public static void registerPlayersForRound(final Dealer dealer) throws KeeperException, InterruptedException {
+		dealer.getListOfPlayers().clear();
+		List<String> players = ZookeeperService.getInstance().waitUntilTableIsFull("/" + dealer.getMesa(), 1);
+		dealer.registerPlayers(players);
 	}
 
 }

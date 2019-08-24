@@ -11,7 +11,7 @@ import lombok.Getter;
 public abstract class Dealer extends Player {
 
 	@Getter
-	private List<Player> listOfPlayers;
+	private List<Player> listOfPlayers = new ArrayList<>();
 
 	private static Player tempDealer = new Player("temp", "temp");
 
@@ -27,7 +27,6 @@ public abstract class Dealer extends Player {
 	}
 
 	public void registerPlayers(final List<String> listOfPlayers) {
-		this.listOfPlayers = new ArrayList<>();
 		listOfPlayers.stream().filter(player -> !"dealer".equals(player)).forEach(playerName -> {
 			Player player = new Player(playerName, this.getMesa());
 			player.setFullName("/" + this.getMesa() + "/" + playerName);

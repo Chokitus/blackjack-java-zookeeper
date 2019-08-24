@@ -3,16 +3,20 @@ package java_zookeeper.blackjack.zookeeper;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZKUtil;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 
 import java_zookeeper.blackjack.game.deck.card.Card;
 import java_zookeeper.blackjack.game.player.Dealer;
@@ -22,9 +26,13 @@ import lombok.extern.log4j.Log4j;
 @Log4j
 public class ZookeeperService implements Watcher, Closeable {
 
+	private static final byte[] INITIAL_MONEY = SerializationUtils.serialize(Integer.valueOf(2000));
+	private static final String PURSE = "/purse";
+
 	private ZooKeeper zk = null;
 
-	public static Object mutex = new Object();
+	public static final Object mutex = new Object();
+	public static final Object mutex2 = new Object();
 
 	private static ZookeeperService instance = null;
 
@@ -65,6 +73,18 @@ public class ZookeeperService implements Watcher, Closeable {
 		}
 	}
 
+	@Override
+	public void process(final WatchedEvent event) {
+		if (Watcher.Event.EventType.NodeDeleted.equals(event.getType()) && event.getPath().contains("_election")) {
+			synchronized (ZookeeperService.mutex2) {
+				ZookeeperService.mutex2.notifyAll();
+			}
+		}
+		synchronized (ZookeeperService.mutex) {
+			ZookeeperService.mutex.notifyAll();
+		}
+	}
+
 	/**
 	 * <p>
 	 * Cria uma nova mesa no Jogo, sendo seu nome conhecido entre todos os
@@ -79,8 +99,15 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * @throws InterruptedException
 	 */
 	public synchronized String createNewMesa(final String mesa) throws KeeperException, InterruptedException {
-		ZookeeperService.log.info("Criando nova mesa de nome" + mesa);
-		return this.zk.create("/" + mesa, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		try {
+			return this.zk.create("/" + mesa, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		} catch (KeeperException.NodeExistsException e) {
+			/*
+			 * Reaproveitamos a mesa
+			 */
+			return "/" + mesa;
+		}
+
 	}
 
 	/**
@@ -99,28 +126,38 @@ public class ZookeeperService implements Watcher, Closeable {
 	 *
 	 * @param mesa
 	 * @param player
+	 * @param firstTime
 	 * @param key
 	 * @return
 	 * @throws KeeperException
-	 * @throws InterruptedException
+	 * @throws Interrupted
+	 *             Exception
 	 */
-	public String createNewPlayerNodeAndWaitTillDealerCall(final Player player) throws KeeperException, InterruptedException {
+	public String createNewPlayerNode(final Player player, final boolean firstTime) throws KeeperException, InterruptedException {
 		synchronized (ZookeeperService.mutex) {
-			if (this.zk.exists("/" + player.getMesa(), false) == null) {
-				throw new IllegalStateException("Um dealer deve ser decidido antes que os players se registrem.");
+			/*
+			 * Se a mesa não existe, espera um dealer para criá-la
+			 */
+			while (this.zk.exists("/" + player.getMesa(), true) == null) {
+				ZookeeperService.mutex.wait();
 			}
 
 			byte[] mensagemDeRegistro = "Gostaria de entrar na mesa!".getBytes();
-			String nodeName = this.createPlayerNode(player, mensagemDeRegistro, false);
+			/*
+			 * TODO: Já existe o player?
+			 */
+			String nodeName = this.createPlayerNode(player, mensagemDeRegistro);
 			player.setFullName(nodeName);
+			player.setInitialMoney(this.getMoneyFromPlayer(player));
 
-			while (Arrays.equals(mensagemDeRegistro, this.zk.getData(nodeName, ZookeeperService.getInstance(), null))) {
-				System.out.println("Esperando aviso do Dealer.");
-				ZookeeperService.mutex.wait();
-			}
 		}
 
 		return null;
+	}
+
+	private Integer getMoneyFromPlayer(final Player player) throws KeeperException, InterruptedException {
+		byte[] data = this.zk.getData(player.getFullName() + ZookeeperService.PURSE, false, null);
+		return SerializationUtils.deserialize(data);
 	}
 
 	/**
@@ -138,10 +175,22 @@ public class ZookeeperService implements Watcher, Closeable {
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	public String createPlayerNode(final Player player, final byte[] mensagemDeRegistro, final boolean isDealer)
-			throws KeeperException, InterruptedException {
-		return this.zk.create(ZookeeperService.getNodePathToPlayer(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
-				isDealer ? CreateMode.PERSISTENT : CreateMode.PERSISTENT_SEQUENTIAL);
+	public String createPlayerNode(final Player player, final byte[] mensagemDeRegistro) throws InterruptedException, KeeperException {
+		try {
+			String playerNode = this.zk.create(ZookeeperService.getNodePathToPlayer(player), mensagemDeRegistro, Ids.OPEN_ACL_UNSAFE,
+					CreateMode.PERSISTENT);
+			/*
+			 * Cria também seu "bolso", onde teremos a informação de quanto
+			 * dinheiro tem o Player.
+			 */
+			this.zk.create(playerNode + ZookeeperService.PURSE, ZookeeperService.INITIAL_MONEY, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+			return playerNode;
+		} catch (KeeperException.NodeExistsException e) {
+			/*
+			 * Player já existe, então reutilizaremos o nó.
+			 */
+			return ZookeeperService.getNodePathToPlayer(player);
+		}
 	}
 
 	/**
@@ -159,13 +208,6 @@ public class ZookeeperService implements Watcher, Closeable {
 
 	public String createZNode(final Player player, final byte[] data) throws KeeperException, InterruptedException {
 		return this.zk.create(player.getFullName() + "/", data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT_SEQUENTIAL);
-	}
-
-	@Override
-	public void process(final WatchedEvent event) {
-		synchronized (ZookeeperService.mutex) {
-			ZookeeperService.mutex.notifyAll();
-		}
 	}
 
 	/**
@@ -208,12 +250,14 @@ public class ZookeeperService implements Watcher, Closeable {
 		synchronized (ZookeeperService.mutex) {
 			List<String> children = this.zk.getChildren(ZookeeperService.getNodePathToPlayer(player), true);
 
-			while (children.size() < expectedCards) {
+			while (children.size() < expectedCards + 1) {
 				ZookeeperService.mutex.wait();
 				children = this.zk.getChildren(ZookeeperService.getNodePathToPlayer(player), true);
 			}
 			for (String child : children) {
-				player.addToHand(this.getCardFromPath(player.getFullName() + "/" + child));
+				if (!ZookeeperService.PURSE.equals("/" + child)) {
+					player.addToHand(this.getCardFromPath(player.getFullName() + "/" + child));
+				}
 			}
 		}
 	}
@@ -234,12 +278,13 @@ public class ZookeeperService implements Watcher, Closeable {
 		for (String otherPlayer : players) {
 			String playerNode = mesa + "/" + otherPlayer;
 			List<Card> cardsFromPlayer = this.getCardsFromPlayerNode(playerNode);
-			cardsFromPlayer.forEach(card -> System.out.println(card));
+			cardsFromPlayer.forEach(System.out::println);
 		}
 	}
 
 	private List<Card> getCardsFromPlayerNode(final String playerNode) throws KeeperException, InterruptedException {
-		List<String> cards = this.zk.getChildren(playerNode, false);
+		List<String> cards = this.zk.getChildren(playerNode, false).stream().filter(p -> !ZookeeperService.PURSE.equals("/" + p))
+				.collect(Collectors.toList());
 		List<Card> listOfCards = new ArrayList<>();
 		for (String card : cards) {
 			String cardNode = playerNode + "/" + card;
@@ -262,12 +307,18 @@ public class ZookeeperService implements Watcher, Closeable {
 	public void removeAllChildrenFromNode(final String node) throws KeeperException, InterruptedException {
 		List<String> children = this.zk.getChildren(node, false);
 		for (String child : children) {
-			this.zk.delete(node + "/" + child, -1);
+			if (!ZookeeperService.PURSE.equals("/" + child)) {
+				this.zk.delete(node + "/" + child, -1);
+			}
 		}
 	}
 
 	public void removePlayer(final Player player) throws InterruptedException, KeeperException {
-		this.zk.delete(ZookeeperService.getNodePathToPlayer(player), -1);
+		this.removeNode(ZookeeperService.getNodePathToPlayer(player));
+	}
+
+	public void removeNode(final String path) throws InterruptedException, KeeperException {
+		ZKUtil.deleteRecursive(this.zk, path);
 	}
 
 	public void registerPlayerForNextRound(final Player player) throws KeeperException, InterruptedException {
@@ -279,7 +330,6 @@ public class ZookeeperService implements Watcher, Closeable {
 				ZookeeperService.mutex.wait();
 			}
 		}
-
 	}
 
 	public static String getPathToNewRoundNode(final Player player) {
@@ -290,4 +340,51 @@ public class ZookeeperService implements Watcher, Closeable {
 		return "/" + dealer.getMesa() + "_new_round";
 	}
 
+	private String getPathToElectionNode(final String mesa) {
+		return "/" + mesa + "_election";
+	}
+
+	public Stat existsElection(final String mesa) throws KeeperException, InterruptedException {
+		return this.exists(this.getPathToElectionNode(mesa), true);
+	}
+
+	public Stat exists(final String node, final boolean watch) throws KeeperException, InterruptedException {
+		return this.zk.exists(node, watch);
+	}
+
+	public void createElectionNode(final String mesa) throws KeeperException, InterruptedException {
+		try {
+			this.zk.create(this.getPathToElectionNode(mesa), new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		} catch (KeeperException.NodeExistsException e) {
+			return;
+		}
+	}
+
+	public int createCandidateNode(final String mesa) throws KeeperException, InterruptedException {
+		String pathToElectionNode = new StringBuilder(this.getPathToElectionNode(mesa)).append("/").toString();
+		String nodeName = this.zk.create(pathToElectionNode, new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL_SEQUENTIAL);
+		return Integer.parseInt(nodeName.replaceAll(pathToElectionNode, ""));
+	}
+
+	public Map<String, Integer> getAllCandidatesFromElection(final String mesa) throws KeeperException, InterruptedException {
+		String pathToElectionNode = this.getPathToElectionNode(mesa);
+		List<String> candidates = this.zk.getChildren(pathToElectionNode, false);
+		Map<String, Integer> candidateToId = new HashMap<>();
+		candidates.forEach(candidate -> candidateToId.put(candidate, Integer.valueOf(candidate.replaceAll(pathToElectionNode + "/", ""))));
+		return candidateToId;
+	}
+
+	public void watchForLeaderHealth(final String mesa, final String leaderNode) throws KeeperException, InterruptedException {
+		synchronized (ZookeeperService.mutex2) {
+			String leaderNodePath = this.getPathToElectionNode(mesa) + "/" + leaderNode;
+			while (this.zk.exists(leaderNodePath, this) != null) {
+				ZookeeperService.mutex2.wait();
+			}
+		}
+	}
+
+	public void setMoneyToPlayer(final Player player, final int currentMoney) throws KeeperException, InterruptedException {
+		byte[] data = SerializationUtils.serialize(Integer.valueOf(currentMoney));
+		this.zk.setData(ZookeeperService.getNodePathToPlayer(player) + ZookeeperService.PURSE, data, -1);
+	}
 }

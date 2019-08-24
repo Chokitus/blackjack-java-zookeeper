@@ -4,7 +4,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.apache.zookeeper.KeeperException;
+
 import java_zookeeper.blackjack.game.deck.card.Card;
+import java_zookeeper.blackjack.zookeeper.ZookeeperService;
 import lombok.Getter;
 import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
@@ -80,14 +83,19 @@ public class Player {
 		this.aposta *= 2;
 	}
 
-	public void setToCurrentMoney(final int valor) {
+	public void setToCurrentMoney(final int valor) throws KeeperException, InterruptedException {
 		this.currentMoney += valor;
+		ZookeeperService.getInstance().setMoneyToPlayer(this, this.currentMoney);
 	}
 
 	public void newRound() {
 		this.aposta = 0;
 		this.score = 0;
 		this.hand.clear();
+	}
+
+	public void setInitialMoney(final Integer moneyFromPlayer) {
+		this.currentMoney = moneyFromPlayer.intValue();
 	}
 
 }
