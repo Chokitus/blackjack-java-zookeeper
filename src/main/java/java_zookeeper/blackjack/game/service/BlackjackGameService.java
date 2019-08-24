@@ -45,7 +45,7 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		System.out.println("Apostando: 100");
 		byte[] myBet = SerializationUtils.serialize(Integer.valueOf(100));
 		player.setAposta(100);
-		ZookeeperService.getInstance().setDataToPlayerNode(player, myBet, 1);
+		ZookeeperService.getInstance().setDataToPlayerNode(player, myBet, -1);
 	}
 
 	public static void distributeCards(final Dealer dealer) throws KeeperException, InterruptedException {
@@ -122,7 +122,7 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		}
 	}
 
-	public static void verifyWinnersAndDoPayouts(final Dealer dealer) {
+	public static void verifyWinnersAndDoPayouts(final Dealer dealer) throws KeeperException, InterruptedException {
 		int dealerScore = dealer.getScore();
 		/*
 		 * Verifica se o Dealer passou de 21. Caso tenha passado, para ganhar
@@ -133,6 +133,10 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 			int playerScore = player.getScore();
 			System.out.println(playerScore);
 			BlackjackGameServiceHelper.verifyWinner(dealerScore, player, playerScore);
+			/*
+			 * Acorda o Player para que ele também verifique se ganhou
+			 */
+			ZookeeperService.getInstance().setDataToPlayerNode(player, BlackjackGameServiceHelper.FIM, -1);
 		}
 	}
 
@@ -141,6 +145,42 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 		int dealerScore = Dealer.calculateScore(dealerCards);
 		int playerScore = player.getScore();
 		BlackjackGameServiceHelper.verifyWinner(dealerScore, player, playerScore);
+	}
+
+	public static void cleanTableForNextRound(final Dealer dealer) throws InterruptedException, KeeperException {
+		for (Player player : dealer.getListOfPlayers()) {
+			player.newRound();
+			ZookeeperService.getInstance().removeAllCardsFromPlayer(player);
+			System.out.println(player.getCurrentMoney());
+		}
+		List<Player> listOfMoneylessPlayer = dealer.getAndRemovePlayerWithoutMoney();
+		for (Player player : listOfMoneylessPlayer) {
+			ZookeeperService.getInstance().removePlayer(player);
+		}
+		ZookeeperService.getInstance().removeAllCardsFromPlayer(dealer);
+		dealer.newRound();
+
+	}
+
+	public static void waitUntilNextRound(final Player player) throws KeeperException, InterruptedException {
+		BlackjackGameServiceHelper.waitForRequestOrAnswer(player, BlackjackGameServiceHelper.APOSTE);
+		System.out.println(BlackjackGameServiceHelper.APOSTE_STRING);
+	}
+
+	public static void waitUntilEndOfRound(final Player player) throws KeeperException, InterruptedException {
+		BlackjackGameServiceHelper.waitForRequestOrAnswer(player, BlackjackGameServiceHelper.FIM);
+		System.out.println(BlackjackGameServiceHelper.FIM_STRING);
+	}
+
+	public static void waitUntilAllPlayersAreReady(final Dealer dealer) throws KeeperException, InterruptedException {
+		String newRoundNode = ZookeeperService.getPathToNewRoundNode(dealer);
+		ZookeeperService.getInstance().waitUntilTableIsFull(newRoundNode, dealer.getListOfPlayers().size());
+		ZookeeperService.getInstance().removeAllChildrenFromNode(newRoundNode);
+
+	}
+
+	public static void registerForNextRound(final Player player) throws KeeperException, InterruptedException {
+		ZookeeperService.getInstance().registerPlayerForNextRound(player);
 	}
 
 }

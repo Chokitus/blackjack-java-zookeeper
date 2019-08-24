@@ -2,6 +2,7 @@ package java_zookeeper.blackjack.game.player;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import java_zookeeper.blackjack.game.deck.DeckGenerator;
 import java_zookeeper.blackjack.game.deck.card.Card;
@@ -18,6 +19,7 @@ public abstract class Dealer extends Player {
 
 	public Dealer(final String nome, final String mesa) {
 		super(nome, mesa);
+		this.currentMoney = 20000;
 	}
 
 	public Card getNewCard() {
@@ -40,6 +42,18 @@ public abstract class Dealer extends Player {
 		int dealerScore = Dealer.tempDealer.getScore();
 		Dealer.tempDealer.newRound();
 		return dealerScore;
+	}
+
+	@Override
+	public void newRound() {
+		super.newRound();
+		this.deckGen.newRound();
+	}
+
+	public List<Player> getAndRemovePlayerWithoutMoney() {
+		List<Player> moneylessPlayers = this.listOfPlayers.stream().filter(p -> p.getCurrentMoney() <= 0).collect(Collectors.toList());
+		this.listOfPlayers = this.listOfPlayers.stream().filter(p -> p.getCurrentMoney() > 0).collect(Collectors.toList());
+		return moneylessPlayers;
 	}
 
 }

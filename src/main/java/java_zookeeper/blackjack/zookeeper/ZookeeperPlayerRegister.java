@@ -21,11 +21,11 @@ public class ZookeeperPlayerRegister {
 	}
 
 	public static Dealer registerDealer(final String mesa, final String name, final int expectedPlayers)
-			throws KeeperException, InterruptedException, IOException {
+			throws KeeperException, InterruptedException {
 
 		Dealer dealer = new DealerImpl(name, mesa);
-		String mesaName = ZookeeperService.getInstance(null).createNewMesa(mesa);
-
+		String mesaName = ZookeeperService.getInstance().createNewMesa(mesa);
+		ZookeeperService.getInstance().createNewMesa(mesa + "_new_round");
 		dealer.setFullName("/" + mesa + "/dealer");
 		ZookeeperService.getInstance().createPlayerNode(dealer, new byte[0], true);
 

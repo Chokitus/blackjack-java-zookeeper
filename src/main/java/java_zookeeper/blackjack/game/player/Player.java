@@ -36,7 +36,7 @@ public class Player {
 	private Integer aposta;
 
 	@Getter
-	private int currentMoney;
+	protected int currentMoney = 300;
 
 	@Getter
 	@Setter

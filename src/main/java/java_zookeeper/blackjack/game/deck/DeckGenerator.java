@@ -42,4 +42,8 @@ public class DeckGenerator {
 		}
 		return DeckGenerator.gen;
 	}
+
+	public void newRound() {
+		this.listOfCards.clear();
+	}
 }

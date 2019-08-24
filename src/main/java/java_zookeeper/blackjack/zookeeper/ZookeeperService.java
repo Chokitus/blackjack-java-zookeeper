@@ -15,6 +15,7 @@ import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 
 import java_zookeeper.blackjack.game.deck.card.Card;
+import java_zookeeper.blackjack.game.player.Dealer;
 import java_zookeeper.blackjack.game.player.Player;
 import lombok.extern.log4j.Log4j;
 
@@ -251,6 +252,42 @@ public class ZookeeperService implements Watcher, Closeable {
 	public List<Card> getDealerCards(final Player player) throws KeeperException, InterruptedException {
 		String dealerNode = new StringBuilder("/").append(player.getMesa()).append("/dealer").toString();
 		return this.getCardsFromPlayerNode(dealerNode);
+	}
+
+	public void removeAllCardsFromPlayer(final Player player) throws InterruptedException, KeeperException {
+		String pathToPlayer = ZookeeperService.getNodePathToPlayer(player);
+		this.removeAllChildrenFromNode(pathToPlayer);
+	}
+
+	public void removeAllChildrenFromNode(final String node) throws KeeperException, InterruptedException {
+		List<String> children = this.zk.getChildren(node, false);
+		for (String child : children) {
+			this.zk.delete(node + "/" + child, -1);
+		}
+	}
+
+	public void removePlayer(final Player player) throws InterruptedException, KeeperException {
+		this.zk.delete(ZookeeperService.getNodePathToPlayer(player), -1);
+	}
+
+	public void registerPlayerForNextRound(final Player player) throws KeeperException, InterruptedException {
+		synchronized (ZookeeperService.mutex) {
+			String newRoundNode = ZookeeperService.getPathToNewRoundNode(player);
+			newRoundNode = this.zk.create(newRoundNode, "Gostaria de jogar mais um Round!".getBytes(), Ids.OPEN_ACL_UNSAFE,
+					CreateMode.PERSISTENT_SEQUENTIAL);
+			while (this.zk.exists(newRoundNode, this) != null) {
+				ZookeeperService.mutex.wait();
+			}
+		}
+
+	}
+
+	public static String getPathToNewRoundNode(final Player player) {
+		return "/" + player.getMesa() + "_new_round/" + player.getName();
+	}
+
+	public static String getPathToNewRoundNode(final Dealer dealer) {
+		return "/" + dealer.getMesa() + "_new_round";
 	}
 
 }

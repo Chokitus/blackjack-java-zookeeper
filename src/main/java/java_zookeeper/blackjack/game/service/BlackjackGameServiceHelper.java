@@ -10,7 +10,9 @@ import java_zookeeper.blackjack.game.deck.card.Card;
 import java_zookeeper.blackjack.game.player.Dealer;
 import java_zookeeper.blackjack.game.player.Player;
 import java_zookeeper.blackjack.zookeeper.ZookeeperService;
+import lombok.extern.log4j.Log4j;
 
+@Log4j
 public abstract class BlackjackGameServiceHelper {
 	protected static final String APOSTE_STRING = "Um novo round começou! Mande-me sua aposta!";
 	protected static final byte[] APOSTE = BlackjackGameServiceHelper.APOSTE_STRING.getBytes();
@@ -20,6 +22,9 @@ public abstract class BlackjackGameServiceHelper {
 
 	protected static final String OK_STRING = "Entendido!";
 	protected static final byte[] OK = BlackjackGameServiceHelper.OK_STRING.getBytes();
+
+	protected static final String FIM_STRING = "Acabaram as apostas, hora de ver quem ganhou!";
+	protected static final byte[] FIM = BlackjackGameServiceHelper.FIM_STRING.getBytes();
 
 	protected BlackjackGameServiceHelper() {
 
@@ -147,7 +152,7 @@ public abstract class BlackjackGameServiceHelper {
 			return BlackjackRoundAction.ESTOUREI;
 		}
 		if (player.getScore() < 16) {
-			System.out.println("Uma carta por favor!");
+			BlackjackGameServiceHelper.log.info("Uma carta por favor!");
 			return BlackjackRoundAction.UMA_CARTA;
 		}
 		return BlackjackRoundAction.PARAR;
@@ -158,25 +163,26 @@ public abstract class BlackjackGameServiceHelper {
 	}
 
 	protected static void verifyWinner(final int dealerScore, final Player player, final int playerScore) {
+		StringBuilder playerString = new StringBuilder("Player ").append(player.getName());
 		if (dealerScore > 21) {
 			/*
 			 * Se não passou de 21, ganhou! Se ficou com 21, ainda ganha um
 			 * adicional de 50% da aposta
 			 */
 			if (playerScore <= 21) {
-				System.out.println("Player " + player.getName() + " ganhou!");
+				BlackjackGameServiceHelper.log.info(playerString.append(" ganhou!").toString());
 				player.setToCurrentMoney(BlackjackGameServiceHelper.getReward(playerScore, player.getAposta()));
 			} else {
-				System.out.println("Player " + player.getName() + " empatou e não ganha nada!");
+				BlackjackGameServiceHelper.log.info(playerString.append(" empatou e não ganha nada!").toString());
 			}
 		} else {
 			if (playerScore > dealerScore && playerScore <= 21) {
-				System.out.println("Player " + player.getName() + " ganhou!");
+				BlackjackGameServiceHelper.log.info(playerString.append(" ganhou!").toString());
 				player.setToCurrentMoney(BlackjackGameServiceHelper.getReward(playerScore, player.getAposta()));
 			} else if (playerScore == dealerScore) {
-				System.out.println("Player " + player.getName() + " empatou e não ganha nada!");
+				BlackjackGameServiceHelper.log.info(playerString.append(" empatou e não ganha nada!").toString());
 			} else {
-				System.out.println("Player " + player.getName() + " perdeu!");
+				BlackjackGameServiceHelper.log.info(playerString.append(" perdeu!").toString());
 				player.setToCurrentMoney(-player.getAposta());
 			}
 		}
