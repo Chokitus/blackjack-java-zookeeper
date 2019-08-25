@@ -16,6 +16,7 @@ public class BlackJack {
 	public static void main(final String[] args) throws InterruptedException, KeeperException {
 
 		ZookeeperService.createInstance("localhost:2181");
+		BlackJack.log.info("Olá! Bem-vindo ao Blackjack, informe-me seu nome!");
 		String nomeDoPlayer = BlackjackGameServiceHelper.input.nextLine();
 		ZookeeperPlayerRegister.electLeader("001", nomeDoPlayer);
 	}

@@ -156,8 +156,10 @@ public abstract class BlackjackGameServiceHelper {
 	protected static BlackjackRoundAction getPlayerLocalAction(final Player player) {
 		player.printHand(false);
 		if (player.getScore() > 21) {
+			BlackjackGameServiceHelper.log.info("Você estourou os 21! Não poderá mais tomar ações.");
 			return BlackjackRoundAction.ESTOUREI;
 		}
+		BlackjackGameServiceHelper.log.info("Você ainda tem R$ " + player.getCurrentMoney());
 		BlackjackGameServiceHelper.log
 				.info(new StringBuilder("Escolha uma ação! As ações possíveis são: \n").append(BlackjackRoundAction.UMA_CARTA.getCommand())
 						.append(": Mais uma carta \n").append(BlackjackRoundAction.DOBRAR.getCommand()).append(": Dobrar \n")

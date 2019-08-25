@@ -69,7 +69,7 @@ public class ZookeeperPlayerRegister {
 			 */
 			if (leaderNode.isBlank()) {
 				if (!ZookeeperPlayerRegister.firstTime) {
-					ZookeeperService.getInstance().removeNode("/" + mesa + "/" + nomeDoPlayer);
+					ZookeeperService.getInstance().removeNode("/blackjack/" + mesa + "/" + nomeDoPlayer);
 				}
 				new BlackJack().play(allCandidatesFromElection.size(), mesa, nomeDoPlayer, false);
 				return;
@@ -90,7 +90,7 @@ public class ZookeeperPlayerRegister {
 			/*
 			 * Espera pela queda do leader
 			 */
-			ZookeeperService.getInstance().watchForLeaderHealth(mesa, leaderNode);
+			ZookeeperService.getInstance().watchForLeaderHealth("/blackjack/" + mesa, leaderNode);
 			executor.shutdownNow();
 			ZookeeperPlayerRegister.firstTime = false;
 		}
