@@ -1,8 +1,11 @@
 package java_zookeeper.blackjack.game.service;
 
 import java.util.Arrays;
+import java.util.Optional;
+import java.util.Scanner;
 
 import org.apache.commons.lang3.SerializationUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.zookeeper.KeeperException;
 
 import java_zookeeper.blackjack.game.actions.BlackjackRoundAction;
@@ -25,6 +28,8 @@ public abstract class BlackjackGameServiceHelper {
 
 	protected static final String FIM_STRING = "Acabaram as apostas, hora de ver quem ganhou!";
 	protected static final byte[] FIM = BlackjackGameServiceHelper.FIM_STRING.getBytes();
+
+	public static final Scanner input = new Scanner(System.in);
 
 	protected BlackjackGameServiceHelper() {
 
@@ -76,6 +81,8 @@ public abstract class BlackjackGameServiceHelper {
 	}
 
 	protected static void sendCard(final Card card, final Player player) throws KeeperException, InterruptedException {
+		BlackjackGameServiceHelper.log
+				.info(new StringBuilder("Enviando ").append(card.toString()).append(" para ").append(player.getName()).append("!"));
 		ZookeeperService.getInstance().enviarCardParaPlayer(player, card);
 		player.addToHand(card);
 	}
@@ -90,23 +97,22 @@ public abstract class BlackjackGameServiceHelper {
 			throws KeeperException, InterruptedException {
 		BlackjackGameServiceHelper.acceptRequest(player);
 		if (BlackjackRoundAction.UMA_CARTA.equals(playerAction)) {
+			BlackjackGameServiceHelper.log.info("O player deseja uma nova carta!");
 			BlackjackGameServiceHelper.sendCard(dealer.getNewCard(), player);
 			return true;
 		}
 		if (BlackjackRoundAction.DOBRAR.equals(playerAction)) {
+			BlackjackGameServiceHelper.log.info("O player deseja dobrar a aposta!");
 			player.dobrarAposta();
 			BlackjackGameServiceHelper.sendCard(dealer.getNewCard(), player);
 			return true;
 		}
 		if (BlackjackRoundAction.PARAR.equals(playerAction)) {
-			/*
-			 * Parar de pedir para o Player (ou seja, pular ele na lista, talvez
-			 * tenha um atributo boolean se parou ou não, TODO
-			 */
+			BlackjackGameServiceHelper.log.info("O player deseja parar! Hora de chamar outro jogador!");
 		}
 		if (BlackjackRoundAction.DESISTIR.equals(playerAction)) {
 			/*
-			 * Pegar 50% da aposta dele e dar pro Dealer.
+			 * Pegar 50% da aposta dele e dar pro Dealer. TODO
 			 */
 		}
 		return false;
@@ -148,14 +154,25 @@ public abstract class BlackjackGameServiceHelper {
 	 * @return Ação do Player, ou estourei caso o Player esteja com mais de 21
 	 */
 	protected static BlackjackRoundAction getPlayerLocalAction(final Player player) {
+		player.printHand(false);
 		if (player.getScore() > 21) {
 			return BlackjackRoundAction.ESTOUREI;
 		}
-		if (player.getScore() < 16) {
-			BlackjackGameServiceHelper.log.info("Uma carta por favor!");
-			return BlackjackRoundAction.UMA_CARTA;
+		BlackjackGameServiceHelper.log
+				.info(new StringBuilder("Escolha uma ação! As ações possíveis são: \n").append(BlackjackRoundAction.UMA_CARTA.getCommand())
+						.append(": Mais uma carta \n").append(BlackjackRoundAction.DOBRAR.getCommand()).append(": Dobrar \n")
+						.append(BlackjackRoundAction.PARAR.getCommand()).append(": Parar \n")
+						.append(BlackjackRoundAction.DESISTIR.getCommand()).append(": Desistir (50% da sua aposta retorna para você)"));
+		String line = BlackjackGameServiceHelper.input.nextLine();
+		Optional<BlackjackRoundAction> maybeAction = BlackjackRoundAction.parseAction(line);
+		/*
+		 * Enquanto você não digitou um comando válido, pede novamente.
+		 */
+		while (!maybeAction.isPresent()) {
+			line = BlackjackGameServiceHelper.input.nextLine();
+			maybeAction = BlackjackRoundAction.parseAction(line);
 		}
-		return BlackjackRoundAction.PARAR;
+		return maybeAction.get();
 	}
 
 	protected static int getReward(final int playerScore, final int aposta) {
@@ -187,5 +204,17 @@ public abstract class BlackjackGameServiceHelper {
 				player.setToCurrentMoney(-player.getAposta());
 			}
 		}
+	}
+
+	protected static void doBet(final Player player) throws KeeperException, InterruptedException {
+		String playerBet = "";
+		do {
+			System.out.println("Insira uma aposta (deve ser numérica!)");
+			playerBet = BlackjackGameServiceHelper.input.nextLine();
+		} while (!StringUtils.isNumeric(playerBet));
+		Integer numericPlayerBet = Integer.valueOf(playerBet);
+		byte[] myBet = SerializationUtils.serialize(numericPlayerBet);
+		player.setAposta(numericPlayerBet);
+		ZookeeperService.getInstance().setDataToPlayerNode(player, myBet, -1);
 	}
 }

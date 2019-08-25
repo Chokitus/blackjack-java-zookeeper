@@ -1,12 +1,11 @@
 package java_zookeeper.blackjack;
 
-import java.util.Scanner;
-
 import org.apache.zookeeper.KeeperException;
 
 import java_zookeeper.blackjack.game.player.Dealer;
 import java_zookeeper.blackjack.game.player.Player;
 import java_zookeeper.blackjack.game.service.BlackjackGameService;
+import java_zookeeper.blackjack.game.service.BlackjackGameServiceHelper;
 import java_zookeeper.blackjack.zookeeper.ZookeeperPlayerRegister;
 import java_zookeeper.blackjack.zookeeper.ZookeeperService;
 import lombok.extern.log4j.Log4j;
@@ -15,28 +14,10 @@ import lombok.extern.log4j.Log4j;
 public class BlackJack {
 
 	public static void main(final String[] args) throws InterruptedException, KeeperException {
-		Scanner input = new Scanner(System.in);
 
 		ZookeeperService.createInstance("localhost:2181");
-		String nomeDoPlayer = input.nextLine();
+		String nomeDoPlayer = BlackjackGameServiceHelper.input.nextLine();
 		ZookeeperPlayerRegister.electLeader("001", nomeDoPlayer);
-
-		// if (args[0].equals("dealer")) {
-		// Dealer dealer = ZookeeperPlayerRegister.registerDealer("001",
-		// "NomeDoDealer", 3);
-		// ExecutorService executor = Executors.newSingleThreadExecutor();
-		// executor.submit(() -> {
-		// try {
-		// new BlackJack().playDealerGame(dealer);
-		// } catch (KeeperException | InterruptedException e) {
-		// e.printStackTrace();
-		// }
-		// });
-		// } else {
-		// Player player = ZookeeperPlayerRegister.registerPlayer("001",
-		// "NomeDoPlayer", false);
-		// new BlackJack().playPlayerGame(player);
-		// }
 	}
 
 	public void play(final int waitFor, final String mesa, final String nomeDoPlayer, final boolean firstTime)
@@ -81,7 +62,7 @@ public class BlackJack {
 			 * Sétimo passo: ver se ganhamos
 			 */
 			BlackjackGameService.verifyPlayerResults(player);
-			player.printHand();
+			player.printHand(true);
 			BlackJack.log.info(player.getScore());
 			if (player.getCurrentMoney() <= 0) {
 				return;
@@ -137,14 +118,14 @@ public class BlackJack {
 				return;
 			}
 			/*
-			 * Aqui devemos resetar
-			 */
-			BlackjackGameService.cleanTableForNextRound(dealer);
-			/*
 			 * Sétimo passo: espera até que todos os Players se registrem para o
 			 * próximo round.
 			 */
 			BlackjackGameService.waitUntilAllPlayersAreReady(dealer);
+			/*
+			 * Aqui devemos resetar
+			 */
+			BlackjackGameService.cleanTableForNextRound(dealer);
 		}
 	}
 }

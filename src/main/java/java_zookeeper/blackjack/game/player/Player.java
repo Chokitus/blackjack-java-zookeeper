@@ -69,13 +69,14 @@ public class Player {
 		return this.score;
 	}
 
-	public void printHand() {
-		Player.log.info("Meu nome é " + this.getName());
+	public void printHand(final boolean debug) {
+		if (debug) {
+			Player.log.info("Meu nome é " + this.getName());
+		} else {
+			Player.log.info("Suas cartas são:");
+		}
 		for (Card card : this.hand) {
 			Player.log.info(card);
-			if (card.toString().contains("  de")) {
-				System.out.println("!");
-			}
 		}
 	}
 

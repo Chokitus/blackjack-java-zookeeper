@@ -31,7 +31,7 @@ public class ZookeeperPlayerRegister {
 		Dealer dealer = new DealerImpl(name, mesa);
 		String mesaName = ZookeeperService.getInstance().createNewMesa(mesa);
 		ZookeeperService.getInstance().createNewMesa(mesa + "_new_round");
-		dealer.setFullName("/" + mesa + "/dealer");
+		dealer.setFullName(mesaName + "/dealer");
 		ZookeeperService.getInstance().createPlayerNode(dealer, new byte[0]);
 
 		/*
@@ -56,6 +56,7 @@ public class ZookeeperPlayerRegister {
 		while (true) {
 			int leaderId = id;
 			String leaderNode = "";
+			Thread.sleep(5000l);
 			Map<String, Integer> allCandidatesFromElection = ZookeeperService.getInstance().getAllCandidatesFromElection(mesa);
 			for (Map.Entry<String, Integer> candidate : allCandidatesFromElection.entrySet()) {
 				if (leaderId > candidate.getValue()) {
