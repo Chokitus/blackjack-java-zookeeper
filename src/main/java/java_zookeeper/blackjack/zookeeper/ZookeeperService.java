@@ -111,7 +111,7 @@ public class ZookeeperService implements Watcher, Closeable {
 			/*
 			 * Reaproveitamos a mesa
 			 */
-			return "/" + mesa;
+			return ZookeeperService.BLACKJACK + "/" + mesa;
 		}
 
 	}

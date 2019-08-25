@@ -90,7 +90,7 @@ public class ZookeeperPlayerRegister {
 			/*
 			 * Espera pela queda do leader
 			 */
-			ZookeeperService.getInstance().watchForLeaderHealth("/blackjack/" + mesa, leaderNode);
+			ZookeeperService.getInstance().watchForLeaderHealth(mesa, leaderNode);
 			executor.shutdownNow();
 			ZookeeperPlayerRegister.firstTime = false;
 		}
