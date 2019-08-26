@@ -14,11 +14,12 @@ import lombok.extern.log4j.Log4j;
 public class BlackJack {
 
 	public static void main(final String[] args) throws InterruptedException, KeeperException {
-
-		ZookeeperService.createInstance("localhost:2181");
 		BlackJack.log.info("Olá! Bem-vindo ao Blackjack, informe-me seu nome!");
 		String nomeDoPlayer = BlackjackGameServiceHelper.input.nextLine();
-		ZookeeperPlayerRegister.electLeader("001", nomeDoPlayer);
+		BlackJack.log.info("Ótimo, agora digite o nome da sala que deseja jogar!");
+		String nomeDaSala = BlackjackGameServiceHelper.input.nextLine();
+		ZookeeperService.createInstance("localhost:2181");
+		ZookeeperPlayerRegister.electLeader(nomeDaSala, nomeDoPlayer);
 	}
 
 	public void play(final int waitFor, final String mesa, final String nomeDoPlayer, final boolean firstTime)
