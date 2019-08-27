@@ -38,8 +38,6 @@ public class ZookeeperPlayerRegister {
 		 * Aguarda até pelo menos @expectedPlayers players entrarem na mesa.
 		 */
 		ZookeeperService.getInstance().waitUntilTableIsFull(mesaName, expectedPlayers);
-		// dealer.registerPlayers(players);
-
 		return dealer;
 	}
 

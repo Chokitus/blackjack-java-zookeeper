@@ -111,9 +111,7 @@ public abstract class BlackjackGameServiceHelper {
 			BlackjackGameServiceHelper.log.info("O player deseja parar! Hora de chamar outro jogador!");
 		}
 		if (BlackjackRoundAction.DESISTIR.equals(playerAction)) {
-			/*
-			 * Pegar 50% da aposta dele e dar pro Dealer. TODO
-			 */
+			player.desistir();
 		}
 		return false;
 
@@ -183,6 +181,9 @@ public abstract class BlackjackGameServiceHelper {
 
 	protected static void verifyWinner(final int dealerScore, final Player player, final int playerScore)
 			throws KeeperException, InterruptedException {
+		if (player.isDesistir()) {
+			player.setToCurrentMoney((int) -(player.getAposta() * 0.5));
+		}
 		StringBuilder playerString = new StringBuilder("Player ").append(player.getName());
 		if (dealerScore > 21) {
 			/*

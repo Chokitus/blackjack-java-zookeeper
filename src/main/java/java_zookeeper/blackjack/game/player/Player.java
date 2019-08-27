@@ -21,6 +21,9 @@ public class Player {
 	@Getter
 	private int score = 0;
 
+	@Getter
+	private boolean desistir;
+
 	@NonNull
 	@Getter
 	@Setter
@@ -92,11 +95,16 @@ public class Player {
 	public void newRound() {
 		this.aposta = 0;
 		this.score = 0;
+		this.desistir = false;
 		this.hand.clear();
 	}
 
 	public void setInitialMoney(final Integer moneyFromPlayer) {
 		this.currentMoney = moneyFromPlayer.intValue();
+	}
+
+	public void desistir() {
+		this.desistir = true;
 	}
 
 }

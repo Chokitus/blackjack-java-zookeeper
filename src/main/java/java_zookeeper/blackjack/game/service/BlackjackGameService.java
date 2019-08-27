@@ -149,9 +149,6 @@ public abstract class BlackjackGameService extends BlackjackGameServiceHelper {
 	}
 
 	/**
-	 * TODO: Talvez melhorar este método? Ele busca as cartas da mesa, mas não
-	 * faz uma distinção clara entre Players e Dealers.
-	 *
 	 * @param player
 	 * @throws KeeperException
 	 * @throws InterruptedException
